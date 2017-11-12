@@ -9560,6 +9560,7 @@ class basic_json
         typename ValueType = detail::uncvref_t<ValueTypeCV>,
         detail::enable_if_t <
             not std::is_same<basic_json_t, ValueType>::value and
+            not std::is_reference<ValueTypeCV>::value and
             detail::has_from_json<basic_json_t, ValueType>::value and
             not detail::has_non_default_from_json<basic_json_t, ValueType>::value,
             int > = 0 >
@@ -9569,8 +9570,6 @@ class basic_json
         // we cannot static_assert on ValueTypeCV being non-const, because
         // there is support for get<const basic_json_t>(), which is why we
         // still need the uncvref
-        static_assert(not std::is_reference<ValueTypeCV>::value,
-                      "get() cannot be used with reference types, you might want to use get_ref()");
         static_assert(std::is_default_constructible<ValueType>::value,
                       "types must be DefaultConstructible when used with get()");
 
@@ -9616,20 +9615,18 @@ class basic_json
         typename ValueType = detail::uncvref_t<ValueTypeCV>,
         detail::enable_if_t <
             not std::is_same<basic_json_t, ValueType>::value and
+            std::is_reference<ValueTypeCV>::value and
             detail::has_from_json<basic_json_t, ValueType>::value and
             not detail::has_non_default_from_json<basic_json_t, ValueType>::value,
             int > = 0 >
-    ValueType & get_to(ValueType & target) const noexcept(noexcept(
+    ValueTypeCV get(ValueTypeCV value) const noexcept(noexcept(
                                        JSONSerializer<ValueType>::from_json(std::declval<const basic_json_t&>(), std::declval<ValueType&>())))
     {
-        // we cannot static_assert on ValueTypeCV being non-const, because
-        // there is support for get<const basic_json_t>(), which is why we
-        // still need the uncvref
-        static_assert(not std::is_reference<ValueTypeCV>::value,
-                      "get() cannot be used with reference types, you might want to use get_ref()");
+        static_assert(not std::is_const<ValueTypeCV>::value,
+                      "types cannot be const when used with get(ValueType&)");
 
-        JSONSerializer<ValueType>::from_json(*this, target);
-        return target;
+        JSONSerializer<ValueType>::from_json(*this, value);
+        return value;
     }
     
     /*!
